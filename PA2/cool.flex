@@ -44,7 +44,7 @@ extern YYSTYPE cool_yylval;
  */
 
 %}
-%START COMMENT
+%START COMMENT COMMENT_LINE STRING_CONST
 
 /*
  * Define names for regular expressions here.
@@ -88,6 +88,8 @@ LE              <=
 
 <INITIAL>{
   "(*"      BEGIN(COMMENT);
+  "--"      BEGIN(COMMENT_LINE);
+  \"        BEGIN(STRING_CONST);
 }
 <COMMENT>{
   "*)"      BEGIN(INITIAL);
@@ -95,7 +97,13 @@ LE              <=
   "*"
   \n        curr_lineno++;
 }
-
+<COMMENT_LINE>{
+  [^\n]+
+  \n        {
+    BEGIN(INITIAL);
+    curr_lineno++;
+  }
+}
 
  /*
   *  The multiple-character operators.
@@ -146,38 +154,40 @@ LE              <=
   *
   */
 
- 
-{STR_CONST} {
-  if (yyleng > MAX_STR_CONST - 1) {
-    cool_yylval.error_msg = "String constant too long";
-    return (ERROR);
-  }
-
-  string_buf_ptr = string_buf;
-  bool quote = false;
-  for (int i = 0; i < yyleng; i++) {
-    switch (yytext[i]) {
-      case '\\': quote = true; i++; break;
-      case '\n': cool_yylval.error_msg = "Unterminated string constant"; return (ERROR); 
-      case '\0': cool_yylval.error_msg = "String contains null character"; return (ERROR);
-      default:
-        if (!quote) {
-          *string_buf_ptr++ = yytext[i++];
-        } else {
-          switch (yytext[i]) {
-            case 'n': *string_buf_ptr++ = '\n'; break;
-            case 't': *string_buf_ptr++ = '\t'; break;
-            case 'b': *string_buf_ptr++ = '\b'; break;
-            case 'f': *string_buf_ptr++ = '\f'; break;
-            default: *string_buf_ptr++ = yytext[i];
-          }
-          quote = false;
-        }
+ <STRING_CONST>{
+  {STR_CONST}  {
+    if (yyleng > MAX_STR_CONST - 1) {
+      cool_yylval.error_msg = "String constant too long";
+      return (ERROR);
     }
+
+    string_buf_ptr = string_buf;
+    bool quote = false;
+    for (int i = 0; i < yyleng; i++) {
+      if (!quote) {
+        switch (yytext[i]) {
+          case '\\': quote = true; break;
+          case '"': break;
+          case '\n': cool_yylval.error_msg = "Unterminated string constant"; return (ERROR); 
+          case '\0': cool_yylval.error_msg = "String contains null character"; return (ERROR);
+          default: *string_buf_ptr++ = yytext[i];
+        }
+      } else {
+        switch (yytext[i]) {
+          case 'n': *string_buf_ptr++ = '\n'; break;
+          case 't': *string_buf_ptr++ = '\t'; break;
+          case 'b': *string_buf_ptr++ = '\b'; break;
+          case 'f': *string_buf_ptr++ = '\f'; break;
+          default: *string_buf_ptr++ = yytext[i];
+        }
+        quote = false;
+      }
+    }
+    *string_buf_ptr++ = 0;
+    cool_yylval.symbol = stringtable.add_string(string_buf);
+    return (STR_CONST);
   }
-  *string_buf_ptr++ = 0;
-  cool_yylval.symbol = stringtable.add_string(string_buf);
-  return (STR_CONST);
+  \n 
  }
  
  /*
