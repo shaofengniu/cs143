@@ -67,7 +67,7 @@ OF              [Oo][Ff]
 DARROW          =>
 NEW             [Nn][Ee][Ww]
 ISVOID          [Ii][Ss][Vv][Oo][Ii][Dd]
-STR_CONST       \"([^\\\"]|\\.)*\"
+STR_CONST       \"([^\\\"]|\\.|\\\n)*\"
 INT_CONST       [0-9]+
 BOOL_CONST      t[Rr][Uu][Ee]|f[Aa][Ll][Ss][Ee]
 TYPEID          [A-Z][A-Za-z0-9_]*
@@ -89,7 +89,6 @@ LE              <=
 <INITIAL>{
   "(*"      BEGIN(COMMENT);
   "--"      BEGIN(COMMENT_LINE);
-  \"        BEGIN(STRING_CONST);
 }
 <COMMENT>{
   "*)"      BEGIN(INITIAL);
@@ -154,41 +153,38 @@ LE              <=
   *
   */
 
- <STRING_CONST>{
-  {STR_CONST}  {
-    if (yyleng > MAX_STR_CONST - 1) {
-      cool_yylval.error_msg = "String constant too long";
-      return (ERROR);
-    }
-
-    string_buf_ptr = string_buf;
-    bool quote = false;
-    for (int i = 0; i < yyleng; i++) {
-      if (!quote) {
-        switch (yytext[i]) {
-          case '\\': quote = true; break;
-          case '"': break;
-          case '\n': cool_yylval.error_msg = "Unterminated string constant"; return (ERROR); 
-          case '\0': cool_yylval.error_msg = "String contains null character"; return (ERROR);
-          default: *string_buf_ptr++ = yytext[i];
-        }
-      } else {
-        switch (yytext[i]) {
-          case 'n': *string_buf_ptr++ = '\n'; break;
-          case 't': *string_buf_ptr++ = '\t'; break;
-          case 'b': *string_buf_ptr++ = '\b'; break;
-          case 'f': *string_buf_ptr++ = '\f'; break;
-          default: *string_buf_ptr++ = yytext[i];
-        }
-        quote = false;
-      }
-    }
-    *string_buf_ptr++ = 0;
-    cool_yylval.symbol = stringtable.add_string(string_buf);
-    return (STR_CONST);
+{STR_CONST}  {
+  if (yyleng > MAX_STR_CONST - 1) {
+    cool_yylval.error_msg = "String constant too long";
+    return (ERROR);
   }
-  \n 
- }
+
+  string_buf_ptr = string_buf;
+  bool quote = false;
+  for (int i = 0; i < yyleng; i++) {
+    if (!quote) {
+      switch (yytext[i]) {
+        case '\\': quote = true; break;
+        case '"': break;
+        case '\n': cool_yylval.error_msg = "Unterminated string constant"; return (ERROR); 
+        case '\0': cool_yylval.error_msg = "String contains null character"; return (ERROR);
+        default: *string_buf_ptr++ = yytext[i];
+      }
+    } else {
+      switch (yytext[i]) {
+        case 'n': *string_buf_ptr++ = '\n'; break;
+        case 't': *string_buf_ptr++ = '\t'; break;
+        case 'b': *string_buf_ptr++ = '\b'; break;
+        case 'f': *string_buf_ptr++ = '\f'; break;
+        default: *string_buf_ptr++ = yytext[i];
+      }
+      quote = false;
+    }
+  }
+  *string_buf_ptr++ = 0;
+  cool_yylval.symbol = stringtable.add_string(string_buf);
+  return (STR_CONST);
+}
  
  /*
   * Int constants
