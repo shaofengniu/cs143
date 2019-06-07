@@ -42,9 +42,11 @@ extern YYSTYPE cool_yylval;
 /*
  *  Add Your own definitions here
  */
+#define STRING_BUF_UNUSED() \
+  (string_buf + MAX_STR_CONST - string_buf_ptr - 1)
 
 %}
-%START COMMENT COMMENT_LINE STRING_CONST
+%START COMMENT COMMENT_LINE STRING STRING_ERROR
 
 /*
  * Define names for regular expressions here.
@@ -94,7 +96,89 @@ LE              <=
     cool_yylval.error_msg = "Unmatched *)";
     return (ERROR);
   }
+  \"        {
+    BEGIN(STRING);
+    string_buf_ptr = string_buf;
+  }
 }
+<STRING>{
+  \"        {
+    BEGIN(INITIAL);
+    *string_buf_ptr++ = 0;
+    cool_yylval.symbol = stringtable.add_string(string_buf);
+    return (STR_CONST);
+  }
+  [^\\\"\n\0]+  {
+    if (yyleng > STRING_BUF_UNUSED()) {
+      cool_yylval.error_msg = "String constant too long";
+      BEGIN(STRING_ERROR);
+      return (ERROR);
+    }
+    strcpy(string_buf_ptr, yytext);
+    string_buf_ptr += yyleng;
+  }
+  \\\n      {
+    if (1 > STRING_BUF_UNUSED()) {
+      cool_yylval.error_msg = "String constant too long";
+      BEGIN(STRING_ERROR);
+      return (ERROR);
+    }
+    *string_buf_ptr++ = '\n';
+    curr_lineno++;
+  }
+  (\\.)+    {
+    if (yyleng/2 > STRING_BUF_UNUSED()) {
+      cool_yylval.error_msg = "String constant too long";
+      BEGIN(STRING_ERROR);
+      return (ERROR);
+    }
+    for (int i = 1; i < yyleng; i+=2) {
+      switch (yytext[i]) {
+        case 'n': *string_buf_ptr++ = '\n'; break;
+        case 't': *string_buf_ptr++ = '\t'; break;
+        case 'b': *string_buf_ptr++ = '\b'; break;
+        case 'f': *string_buf_ptr++ = '\f'; break;
+        case '\0': 
+          cool_yylval.error_msg = "String contains escaped null character.";
+          BEGIN(STRING_ERROR);
+          return (ERROR);
+        default: *string_buf_ptr++ = yytext[i];
+      }
+    }
+  }
+  
+  \n        {
+    BEGIN(INITIAL);
+    cool_yylval.error_msg = "Unterminated string constant"; 
+    curr_lineno++;
+    return (ERROR); 
+  }
+  \0        {
+    BEGIN(STRING_ERROR);
+    cool_yylval.error_msg = "String contains null character"; 
+    return (ERROR);
+  }
+  <<EOF>>   {
+    BEGIN(INITIAL);
+    cool_yylval.error_msg = "EOF in string constant";
+    return (ERROR);
+  }
+}
+
+
+<STRING_ERROR>{
+  [^\\\"\n]+
+  (\\.)+
+  \\\n      curr_lineno++;
+  \n        {
+    BEGIN(INITIAL);
+    curr_lineno++;
+  }
+  \"        {
+    BEGIN(INITIAL);
+  }
+}
+
 <COMMENT>{
   "*)"      BEGIN(INITIAL);
   [^*\n]+
@@ -158,39 +242,6 @@ LE              <=
   *
   */
 
-{STR_CONST}  {
-  if (yyleng > MAX_STR_CONST - 1) {
-    cool_yylval.error_msg = "String constant too long";
-    return (ERROR);
-  }
-
-  string_buf_ptr = string_buf;
-  bool quote = false;
-  for (int i = 0; i < yyleng; i++) {
-    if (!quote) {
-      switch (yytext[i]) {
-        case '\\': quote = true; break;
-        case '"': break;
-        case '\n': cool_yylval.error_msg = "Unterminated string constant"; return (ERROR); 
-        case '\0': cool_yylval.error_msg = "String contains null character"; return (ERROR);
-        default: *string_buf_ptr++ = yytext[i];
-      }
-    } else {
-      switch (yytext[i]) {
-        case 'n': *string_buf_ptr++ = '\n'; break;
-        case 't': *string_buf_ptr++ = '\t'; break;
-        case 'b': *string_buf_ptr++ = '\b'; break;
-        case 'f': *string_buf_ptr++ = '\f'; break;
-        default: *string_buf_ptr++ = yytext[i];
-      }
-      quote = false;
-    }
-  }
-  *string_buf_ptr++ = 0;
-  cool_yylval.symbol = stringtable.add_string(string_buf);
-  return (STR_CONST);
-}
- 
  /*
   * Int constants
   */
