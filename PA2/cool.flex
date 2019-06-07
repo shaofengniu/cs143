@@ -67,7 +67,8 @@ OF              [Oo][Ff]
 DARROW          =>
 NEW             [Nn][Ee][Ww]
 ISVOID          [Ii][Ss][Vv][Oo][Ii][Dd]
-STR_CONST       \"([^\\\"]|\\.|\\\n)*\"
+
+STR_CONST       \"([^\\\"]|\\.)*\"
 INT_CONST       [0-9]+
 BOOL_CONST      t[Rr][Uu][Ee]|f[Aa][Ll][Ss][Ee]
 TYPEID          [A-Z][A-Za-z0-9_]*
@@ -89,6 +90,10 @@ LE              <=
 <INITIAL>{
   "(*"      BEGIN(COMMENT);
   "--"      BEGIN(COMMENT_LINE);
+  "*)"      {
+    cool_yylval.error_msg = "Unmatched *)";
+    return (ERROR);
+  }
 }
 <COMMENT>{
   "*)"      BEGIN(INITIAL);
@@ -223,4 +228,6 @@ LE              <=
 [\f\r\t\v ]+ {}
 
 \n { curr_lineno++;}
+
+. { cool_yylval.error_msg = yytext; return (ERROR); }
 %%
