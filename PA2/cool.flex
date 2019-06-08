@@ -45,6 +45,8 @@ extern YYSTYPE cool_yylval;
 #define STRING_BUF_UNUSED() \
   (string_buf + MAX_STR_CONST - string_buf_ptr - 1)
 
+int nested_comment;
+
 %}
 %START COMMENT COMMENT_LINE STRING STRING_ERROR
 
@@ -90,7 +92,10 @@ LE              <=
   */
 
 <INITIAL>{
-  "(*"      BEGIN(COMMENT);
+  "(*"      {
+    BEGIN(COMMENT);
+    nested_comment = 0;
+  }
   "--"      BEGIN(COMMENT_LINE);
   "*)"      {
     cool_yylval.error_msg = "Unmatched *)";
@@ -180,10 +185,22 @@ LE              <=
 }
 
 <COMMENT>{
-  "*)"      BEGIN(INITIAL);
-  [^*\n]+
-  "*"
+  "*)"      {
+    if (nested_comment-- == 0) {
+      BEGIN(INITIAL);
+    }
+  }
+  "(*"      {
+    nested_comment++;
+  }
+  [^\*\(\n]+
+  [\*\(]
   \n        curr_lineno++;
+  <<EOF>>   {
+    BEGIN(INITIAL);
+    cool_yylval.error_msg = "EOF in comment";
+    return (ERROR);
+  }
 }
 <COMMENT_LINE>{
   [^\n]+
