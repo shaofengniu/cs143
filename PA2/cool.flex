@@ -213,39 +213,45 @@ LE              <=
  /*
   *  The multiple-character operators.
   */
-
-{DARROW}		{ return (DARROW); }
-{LE}        { return (LE); }
-{ASSIGN}    { return (ASSIGN); }
+<INITIAL>{
+  {DARROW}		{ return (DARROW); }
+  {LE}        { return (LE); }
+  {ASSIGN}    { return (ASSIGN); }
+}
 
  /*
   * The single-character operators.
   */
- [\.\@\~\+\-\*\/<=;:,{}()]  { return yytext[0]; }
+<INITIAL>{
+  [\.\@\~\+\-\*\/<=;:,{}()]  { return yytext[0]; }
+}
+ 
 
 
  /*
   * Keywords are case-insensitive except for the values true and false,
   * which must begin with a lower-case letter.
   */
+<INITIAL>{
+  {CLASS}     { return (CLASS); }
+  {ELSE}      { return (ELSE); }
+  {FI}        { return (FI); }
+  {IF}        { return (IF); }
+  {IN}        { return (IN); }
+  {INHERITS}  { return (INHERITS); }
+  {LET}       { return (LET); }
+  {LOOP}      { return (LOOP); }
+  {POOL}      { return (POOL); }
+  {THEN}      { return (THEN); }
+  {WHILE}     { return (WHILE); }
+  {CASE}      { return (CASE); }
+  {ESAC}      { return (ESAC); }
+  {OF}        { return (OF); }
+  {NEW}       { return (NEW); }
+  {ISVOID}    { return (ISVOID); }
+  {NOT}       { return (NOT); }
 
-{CLASS}     { return (CLASS); }
-{ELSE}      { return (ELSE); }
-{FI}        { return (FI); }
-{IF}        { return (IF); }
-{IN}        { return (IN); }
-{INHERITS}  { return (INHERITS); }
-{LET}       { return (LET); }
-{LOOP}      { return (LOOP); }
-{POOL}      { return (POOL); }
-{THEN}      { return (THEN); }
-{WHILE}     { return (WHILE); }
-{CASE}      { return (CASE); }
-{ESAC}      { return (ESAC); }
-{OF}        { return (OF); }
-{NEW}       { return (NEW); }
-{ISVOID}    { return (ISVOID); }
-{NOT}       { return (NOT); }
+}
 
 
 
@@ -262,40 +268,41 @@ LE              <=
  /*
   * Int constants
   */
-{INT_CONST} {
-  cool_yylval.symbol = inttable.add_string(yytext);
-  return (INT_CONST);
-}
- /*
-  * Bool constants
-  */
-
-{BOOL_CONST} {
-  if (*yytext == 't') {
-    cool_yylval.boolean = true;
-  } else {
-    cool_yylval.boolean = false;
+<INITIAL>{
+  {INT_CONST} {
+    cool_yylval.symbol = inttable.add_string(yytext);
+    return (INT_CONST);
   }
-  return (BOOL_CONST);
+  {BOOL_CONST} {
+    if (*yytext == 't') {
+      cool_yylval.boolean = true;
+    } else {
+      cool_yylval.boolean = false;
+    }
+    return (BOOL_CONST);
+  }
+
+  {TYPEID} {
+    cool_yylval.symbol = idtable.add_string(yytext);
+    return (TYPEID);
+  }
+
+  {OBJECTID} {
+    cool_yylval.symbol = idtable.add_string(yytext);
+    return (OBJECTID);
+  }
+
 }
 
-{TYPEID} {
-  cool_yylval.symbol = idtable.add_string(yytext);
-  return (TYPEID);
-}
-
-{OBJECTID} {
-  cool_yylval.symbol = idtable.add_string(yytext);
-  return (OBJECTID);
-}
 
 
  /*
   * White spaces.
   */
-[\f\r\t\v ]+ {}
-
-\n { curr_lineno++;}
+<INITIAL>{
+  [\f\r\t\v ]+ {}
+  \n { curr_lineno++;}
+}
 
 . { cool_yylval.error_msg = yytext; return (ERROR); }
 %%
