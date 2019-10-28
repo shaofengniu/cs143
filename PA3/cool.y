@@ -170,19 +170,21 @@
     ;
     
     /* If no parent is specified, the class inherits from the Object class. */
+    /* class ::= class TYPE [inherits TYPE] { [feature;]* } */
+
     class
-    : CLASS TYPEID '{' feature_list '}' ';'
-    { 
-      SET_NODELOC(@1); 
-      $$ = class_($2,idtable.add_string("Object"),$4,
-        stringtable.add_string(curr_filename)); 
-    }
-    | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
-    { 
-      SET_NODELOC(@1)
-      $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); 
+    : CLASS TYPEID inherits.opt '{' feature_list '}' ';'
+    {
+      SET_NODELOC(@1);
+      $$ = class_($2, $3, $5, stringtable.add_string(curr_filename));
     }
     ;
+
+    inherits.opt
+    : {$$ = idtable.add_string("Object"); }
+    | INHERITS TYPEID { $$ = $2; }
+    ;
+
     
     /* Feature list may be empty, but no empty features in list. */
     feature_list:		/* empty */
@@ -192,13 +194,20 @@
     { SET_NODELOC(@1); $$ = append_Features($1, single_Features($2)); }
     ;
     
+    /* feature ::= ID(formal [,formal]*):TYPE { expr }
+        | ID : TYPE [<- expr]
+    */
     feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}' /* method */
     { SET_NODELOC(@1); $$ = method($1, $3, $6, $8); }
-    | OBJECTID ':' TYPEID
-    { SET_NODELOC(@1); $$ = attr($1, $3, no_expr()); }
-    | OBJECTID ':' TYPEID ASSIGN expr
-    { SET_NODELOC(@1); $$ = attr($1, $3, $5); }
+    | OBJECTID ':' TYPEID assign.opt
+    { SET_NODELOC(@1); $$ = attr($1, $3, $4; }
     ;
+
+    assign.opt:
+    { $$ = no_expr(); }
+    | ASSIGN expr { $$ = $2; }
+    ;
+
 
     formal_list: /* empty */
     { SET_NODELOC(0); $$ = nil_Formals(); }
@@ -212,6 +221,10 @@
     { SET_NODELOC(@1); $$ = formal($1, $3); }
     ;
 
+    /* expr ::= let ID:TYPE [ <- expr ] [[,ID:TYPE [ <- expr ] ]]* in expr */
+    let_expr:
+    LET OBJECTID ':' TYPEID 
+    
     let_expr:
     OBJECTID ':' TYPEID IN expr
     { SET_NODELOC(@1); $$ = let($1, $3, no_expr(), $5); }
@@ -221,7 +234,7 @@
     { SET_NODELOC(@1); $$ = let($1, $3, no_expr(), $5); }
     | OBJECTID ':' TYPEID ASSIGN expr ',' let_expr
     { SET_NODELOC(@1); $$ = let($1, $3, $5, $7); }
-    ;
+    ;    
 
     expr:
     OBJECTID ASSIGN expr
