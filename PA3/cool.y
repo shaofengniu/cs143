@@ -221,10 +221,7 @@
     { SET_NODELOC(@1); $$ = formal($1, $3); }
     ;
 
-    /* expr ::= let ID:TYPE [ <- expr ] [[,ID:TYPE [ <- expr ] ]]* in expr */
-    let_expr:
-    LET OBJECTID ':' TYPEID 
-    
+    /* expr ::= let ID:TYPE [ <- expr ] [,ID:TYPE [ <- expr ] ]* in expr */
     let_expr:
     OBJECTID ':' TYPEID IN expr
     { SET_NODELOC(@1); $$ = let($1, $3, no_expr(), $5); }
@@ -234,14 +231,14 @@
     { SET_NODELOC(@1); $$ = let($1, $3, no_expr(), $5); }
     | OBJECTID ':' TYPEID ASSIGN expr ',' let_expr
     { SET_NODELOC(@1); $$ = let($1, $3, $5, $7); }
-    ;    
+    ;
 
     expr:
     OBJECTID ASSIGN expr
     { SET_NODELOC(@1); $$ =  assign($1, $3); }
     | expr '.' OBJECTID '(' arg_list ')'
     { SET_NODELOC(@1); $$ = dispatch($1, $3, $5); }
-    | expr '@' TYPEID '.' OBJECTID '(' arg_list ')'
+    | expr '@ID' TYPE '.' OBJECTID '(' arg_list ')'
     { SET_NODELOC(@1); $$ = static_dispatch($1, $3, $5, $7); }
     | OBJECTID '(' arg_list ')'
     { SET_NODELOC(@1); $$ = dispatch(object(idtable.add_string("self")), $1, $3); } /* ??? */
@@ -306,13 +303,13 @@
     ;
 
     case_list:
-    case_ ';'
+    case_
     { SET_NODELOC(@1); $$ = single_Cases($1); }
-    | case_list case_ ';'
+    | case_list case_
     { SET_NODELOC(@1); $$ = append_Cases($1, single_Cases($2)); }
     ;
 
-    case_: OBJECTID ':' TYPEID DARROW expr
+    case_: OBJECTID ':' TYPEID DARROW expr ';'
     { SET_NODELOC(@1); $$ = branch($1, $3, $5); }
     ;
 
