@@ -163,10 +163,14 @@
     ;
     
     class_list
-    : class			/* single class */
+    : class		/* single class */
     { SET_NODELOC(@1); $$ = single_Classes($1); parse_results = $$; }
     | class_list class	/* several classes */
     { SET_NODELOC(@1); $$ = append_Classes($1,single_Classes($2)); parse_results = $$; }
+    | error class 
+    { SET_NODELOC(@2); $$ = single_Classes($2); parse_results = $$; }
+    | class_list error class 
+    { SET_NODELOC(@1); $$ = append_Classes($1, single_Classes($3)); parse_results = $$; }
     ;
     
     /* If no parent is specified, the class inherits from the Object class. */
@@ -188,10 +192,13 @@
     
     /* Feature list may be empty, but no empty features in list. */
     feature_list:		/* empty */
-    { SET_NODELOC(0); $$ = nil_Features(); }
-    
+    { SET_NODELOC(0); $$ = nil_Features(); }   
     | feature_list feature ';' /* several features */
     { SET_NODELOC(@1); $$ = append_Features($1, single_Features($2)); }
+    | error feature
+    { SET_NODELOC(@2); $$ = single_Features($2); }
+    | feature_list error feature
+    { SET_NODELOC(@1); $$ = append_Features($1, single_Features($3)); }
     ;
     
     /* feature ::= ID(formal [,formal]*):TYPE { expr }
@@ -201,6 +208,7 @@
     { SET_NODELOC(@1); $$ = method($1, $3, $6, $8); }
     | OBJECTID ':' TYPEID assign.opt
     { SET_NODELOC(@1); $$ = attr($1, $3, $4; }
+    | 
     ;
 
     assign.opt:
@@ -231,6 +239,8 @@
     { SET_NODELOC(@1); $$ = let($1, $3, no_expr(), $5); }
     | OBJECTID ':' TYPEID ASSIGN expr ',' let_expr
     { SET_NODELOC(@1); $$ = let($1, $3, $5, $7); }
+    | error ',' let_expr 
+    { SET_NODELOC(@2); $$ = $2; }
     ;
 
     expr:
@@ -290,8 +300,11 @@
     expr ';'
     { SET_NODELOC(@1); $$ = single_Expressions($1); }
     | expr_list expr ';'
-    { SET_NODELOC(@1); 
-      $$ = append_Expressions($1, single_Expressions($2)); }
+    { SET_NODELOC(@1); $$ = append_Expressions($1, single_Expressions($2)); }
+    | error expr ';' 
+    { SET_NODELOC(@2); $$ = single_Expressions($2); }
+    | expr_list error expr ';'
+    { SET_NODELOC(@1); $$ = append_Expressions($1, single_Expressions($3)); }
     ;
 
     arg_list:
