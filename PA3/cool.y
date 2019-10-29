@@ -138,9 +138,10 @@
     %type <formals> formal_list
     %type <formal> formal
     %type <expressions> expr_list arg_list 
-    %type <expression> expr let_expr
+    %type <expression> expr let_expr assign.opt
     %type <cases> case_list
     %type <case_> case_
+    %type <symbol> inherits.opt 
     /* Precedence declarations go here. */
     %nonassoc IN
     %right ASSIGN
@@ -231,14 +232,10 @@
 
     /* expr ::= let ID:TYPE [ <- expr ] [,ID:TYPE [ <- expr ] ]* in expr */
     let_expr:
-    OBJECTID ':' TYPEID IN expr
-    { SET_NODELOC(@1); $$ = let($1, $3, no_expr(), $5); }
-    | OBJECTID ':' TYPEID ASSIGN expr IN expr
-    { SET_NODELOC(@1); $$ = let($1, $3, $5, $7); }
-    | OBJECTID ':' TYPEID ',' let_expr
-    { SET_NODELOC(@1); $$ = let($1, $3, no_expr(), $5); }
-    | OBJECTID ':' TYPEID ASSIGN expr ',' let_expr
-    { SET_NODELOC(@1); $$ = let($1, $3, $5, $7); }
+     OBJECTID ':' TYPEID assign.opt IN expr
+    { SET_NODELOC(@1); $$ = let($1, $3, $4, $6); }
+    | OBJECTID ':' TYPEID assign.opt ',' let_expr
+    { SET_NODELOC(@1); $$ = let($1, $3, $4, $6); }
     | error ',' let_expr 
     { SET_NODELOC(@2); $$ = $2; }
     ;
