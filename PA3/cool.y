@@ -196,10 +196,10 @@
     { SET_NODELOC(0); $$ = nil_Features(); }   
     | feature_list feature ';' /* several features */
     { SET_NODELOC(@1); $$ = append_Features($1, single_Features($2)); }
-    | error feature
-    { SET_NODELOC(@2); $$ = single_Features($2); }
-    | feature_list error feature
-    { SET_NODELOC(@1); $$ = append_Features($1, single_Features($3)); }
+    | error ';'
+    { SET_NODELOC(@1); $$ = nil_Features(); }
+    | feature_list error ';'
+    { SET_NODELOC(@1); $$ = $1; }
     ;
     
     /* feature ::= ID(formal [,formal]*):TYPE { expr }
@@ -208,8 +208,7 @@
     feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}' /* method */
     { SET_NODELOC(@1); $$ = method($1, $3, $6, $8); }
     | OBJECTID ':' TYPEID assign.opt
-    { SET_NODELOC(@1); $$ = attr($1, $3, $4; }
-    | 
+    { SET_NODELOC(@1); $$ = attr($1, $3, $4); }
     ;
 
     assign.opt:
@@ -237,7 +236,7 @@
     | OBJECTID ':' TYPEID assign.opt ',' let_expr
     { SET_NODELOC(@1); $$ = let($1, $3, $4, $6); }
     | error ',' let_expr 
-    { SET_NODELOC(@2); $$ = $2; }
+    { SET_NODELOC(@2); $$ = $3; }
     ;
 
     expr:
@@ -245,7 +244,7 @@
     { SET_NODELOC(@1); $$ =  assign($1, $3); }
     | expr '.' OBJECTID '(' arg_list ')'
     { SET_NODELOC(@1); $$ = dispatch($1, $3, $5); }
-    | expr '@ID' TYPE '.' OBJECTID '(' arg_list ')'
+    | expr '@' TYPEID '.' OBJECTID '(' arg_list ')'
     { SET_NODELOC(@1); $$ = static_dispatch($1, $3, $5, $7); }
     | OBJECTID '(' arg_list ')'
     { SET_NODELOC(@1); $$ = dispatch(object(idtable.add_string("self")), $1, $3); } /* ??? */
@@ -298,10 +297,10 @@
     { SET_NODELOC(@1); $$ = single_Expressions($1); }
     | expr_list expr ';'
     { SET_NODELOC(@1); $$ = append_Expressions($1, single_Expressions($2)); }
-    | error expr ';' 
-    { SET_NODELOC(@2); $$ = single_Expressions($2); }
-    | expr_list error expr ';'
-    { SET_NODELOC(@1); $$ = append_Expressions($1, single_Expressions($3)); }
+    | error ';'
+    { SET_NODELOC(@1); $$ = nil_Expressions(); }
+    | expr_list error ';'
+    { SET_NODELOC(@1); $$ = $1; }
     ;
 
     arg_list:
